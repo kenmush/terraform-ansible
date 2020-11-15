@@ -1,0 +1,269 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    github_repo_url: "https://kenmush:8a6b2e8397eb9c5ff47f4731e0108ad5d9904d77@github.com/kenmush/xtian-advert-system.git"
+#    github_repo_url: "https://gitlab-ci-token:pz_Y-ofJgzm7VCDDg8BB@gitlab.com/vinarqdev/blurb-front-end"
+    installationpath: "/var/www/html/blurb"
+    queuedriver: "database"
+    githubrepo: "https://github.com/kenmush/laravel-cloud.git"
+    user: "ubuntu"
+    mysql_root_password: "Kenmushh#45"
+
+  tasks:
+    - name: update APT package manager repository
+      become: true
+      apt:
+        update_cache: yes
+
+    - name: Upgrade existing packages
+      become: true
+      apt:
+        upgrade: yes
+
+    - name: Install GIT VCS
+      become: true
+      apt:
+        name:
+          - git
+          - composer
+        state: latest
+
+    - name: Install ppa PHP repository
+      become: true
+      apt_repository:
+        repo: ppa:ondrej/php
+
+    - name: Install PHP CLI
+      become: true
+      apt:
+        name:
+          - php7.4
+          - php7.4-cli
+          - php7.4-curl
+          - php7.4-fpm
+          - php7.4-intl
+          - php7.4-mysql
+          - php7.4-bz2
+          - php7.4-mbstring
+          - php7.4-xml
+          - php7.4-bcmath
+          - php7.4-gd
+          - php7.4-zip
+        state: latest
+
+
+    - name: Install Supervisord
+      become: true
+      apt:
+         name:
+            - supervisor
+         state: latest
+
+    - name: Install Nginx
+      become: true
+      apt:
+        name: nginx
+        state: latest
+
+    - name: Allow Nginx through Firewall
+      become: true
+      ufw:
+        rule: allow
+        name: "Nginx Full"
+
+    - name: Configure nginx
+      become: true
+      template: src=nginx.conf dest=/etc/nginx/sites-available/default
+      tags:
+        - nginx
+      notify:
+        - restart php-fpm
+        - restart nginx
+
+    - name: "Pull changes from GitHub"
+      become: true
+      git:
+        repo: "{{github_repo_url}}" # This is how we can make this step reusable across projects
+        dest: "{{installationpath}}"
+        version: master # Branch to pull
+        accept_hostkey: yes
+      register: repo # Store the result of this task in a variable
+
+    - name: Create project directory
+      become: true
+      file:
+        path: "{{installationpath}}"
+        state: directory
+        owner: "www-data"
+        group: "www-data"
+        recurse: yes
+
+    - name: Create vendor directory
+      become: true
+      file:
+        path: "{{installationpath}}/vendor"
+        state: directory
+        owner: "www-data"
+        group: "www-data"
+        recurse: yes
+
+    - name: Correct Folder permissions
+      become: true
+      command: chown -R www-data.www-data "{{ installationpath }}"
+
+    - name: Install composer and update dependencies
+      become: true
+      composer:
+        command: install
+        working_dir: "{{ installationpath }}"
+
+    - name: Configure enviroment file
+      become: true
+      template: src=env.conf dest="{{ installationpath }}/.env"
+      notify:
+        - configure supervisor
+      tags:
+        - workerconfig
+
+#    - name: "Install Composer dependencies"
+#      become: true
+#      script: composer install --no-scripts --no-dev
+#      when: repo.changed # Only run this step if we actually pulled new changes from GitHub
+
+#    - name: Setup Scheduler to run every minute
+#      cron:
+#        name: "check dirs"
+#        minute: "0"
+#        hour: "0"
+#        job: "cd {{installationpath}} && php artisan schedule:run >> /dev/null 2>&1"
+
+    - name: Install dependencies
+      become: true
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-setuptools
+        state: latest
+        update_cache: True
+
+    - name: Install MySQL
+      become: true
+      apt:
+        name:
+          - mysql-server
+          - python3-mysqldb
+
+          #    - name: copy .my.cnf file with root password credentials
+          #      become: true
+          #      template:
+          #        src: templates/root/.my.cnf
+          #        dest: ~/.my.cnf
+          #        owner: root
+          #        mode: 0600
+    - name: Install pip
+      become: yes
+      apt:
+        name: python3-pip
+        update_cache: yes
+
+    - name: Install Setup Tools
+      become: yes
+      apt:
+        name: python-setuptools
+        update_cache: yes
+
+    - name: Install Virtual Env
+      become: yes
+      apt:
+        name: virtualenv
+        update_cache: yes
+
+    - name: Install PyMySQL
+      become: true
+      pip:
+        name: PyMySQL
+        executable: pip3
+
+    - name: Configure Queue Workers
+      become: true
+      template: src=workerconfiguration.conf dest=/etc/supervisor/conf.d/workerconfiguration.conf
+      notify:
+        - configure supervisor
+      tags:
+        - workerconfig
+
+    - name: Configure Scheduler
+      become: true
+      template: src=scheduler.conf dest=/etc/supervisor/conf.d/scheduler.conf
+      notify:
+        - configure supervisor
+      tags:
+        - workerconfig
+
+    - name: Start the MySQL service
+      become: true
+      service:
+        name: mysql
+        state: started
+        enabled: true
+
+      # 'localhost' needs to be the last item for idempotency, see
+      # http://ansible.cc/docs/modules.html#mysql-user
+#    - name: update mysql root password for all root accounts
+#      become: true
+#      mysql_user:
+#        name: root
+#        host: localhost
+#        password: ""
+#        priv: "*.*:ALL,GRANT"
+#      with_items:
+#        - 127.0.0.1
+#        - ::1
+#        - localhost
+
+    - name: 'Alter root user to use native passwords'
+      become: true
+      shell: |
+        mysql -u root -NBe 'ALTER USER "root"@"localhost" IDENTIFIED WITH mysql_native_password BY "password"';
+
+    - name: Create database
+      become: true
+      mysql_db:
+        name: laravel
+        login_user: root
+        login_password: "password"
+        state: present
+
+    - name: "Run the migrations"
+      become: true
+      shell: "php {{ installationpath }}/artisan migrate:fresh"
+#    - name: Set authorized keys taken from url
+#      authorized_key:
+#          user: root
+#          state: present
+#          key: https://raw.githubusercontent.com/kenmush/untapped/master/ken.keys
+
+  handlers:
+    - name: restart php-fpm
+      become: true
+      service:
+        name: php7.4-fpm
+        state: restarted
+
+    - name: configure supervisor
+      become: true
+      command: supervisorctl {{item}}
+      with_items:
+        - reread
+        - update
+        - start scheduler:*
+        - start jobs-worker:*
+
+    - name: restart nginx
+      become: true
+      service:
+        name: nginx
+        state: restarted
+

@@ -1,0 +1,6 @@
+/.idea
+/.terraform
+/ssh
+terraform.tfstate
+*.pem
+terraform.tfstate.backup
