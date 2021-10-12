@@ -1,14 +1,32 @@
 ---
 - hosts: all
+  environment:
+    ANSIBLE_HOST_KEY_CHECKING: false
   gather_facts: yes
   vars:
-    github_repo_url: "https://kenmush:8a6b2e8397eb9c5ff47f4731e0108ad5d9904d77@github.com/kenmush/xtian-advert-system.git"
-#    github_repo_url: "https://gitlab-ci-token:pz_Y-ofJgzm7VCDDg8BB@gitlab.com/vinarqdev/blurb-front-end"
-    installationpath: "/var/www/html/blurb"
-    queuedriver: "database"
-    githubrepo: "https://github.com/kenmush/laravel-cloud.git"
+    ansible_host_key_checking: false
+#    github_repo_url: "https://e177731cb4f143ccb177d106d6b2c1abb7605d65:x-oauth-basic@github.com/kenmush/investordashboard.git"
+    github_repo_url: "https://e177731cb4f143ccb177d106d6b2c1abb7605d65:x-oauth-basic@github.com/99robots/junglemetrics-laravel-app.git"
+    installationpath: "/var/www/html/junglemetrics"
+    queuedriver: "redis"
     user: "ubuntu"
+    #######################
+    # Enviroment File
+    #######################
+    app_name: "Jungle Metrics"
+    database_host: 127.0.0.1 # 127.0.0.1
+    database: "laravel" # laravel
+    database_username: "root" # root
+    database_password: "password" # password
+    queue_connection: "sync"
+    cache_driver: "file"
+    #######################
+    # Enviroment File
+    #######################
     mysql_root_password: "Kenmushh#45"
+    inifile: "/etc/php/7.4/fpm/php.ini"
+
+#    github_repo_url: "https://gitlab-ci-token:pz_Y-ofJgzm7VCDDg8BB@gitlab.com/vinarqdev/blurb-front-end"
 
   tasks:
     - name: update APT package manager repository
@@ -50,6 +68,7 @@
           - php7.4-bcmath
           - php7.4-gd
           - php7.4-zip
+          - php7.4-redis
         state: latest
 
 
@@ -118,7 +137,7 @@
         command: install
         working_dir: "{{ installationpath }}"
 
-    - name: Configure enviroment file
+    - name: update env
       become: true
       template: src=env.conf dest="{{ installationpath }}/.env"
       notify:
@@ -202,6 +221,22 @@
       tags:
         - workerconfig
 
+    - name: set upload max filesize
+      become: yes
+      ini_file:
+        path: "{{ inifile }}"
+        section: PHP
+        option: upload_max_filesize
+        value: 200M
+
+    - name: set upload post max size
+      become: yes
+      ini_file:
+        path: "{{ inifile }}"
+        section: PHP
+        option: post_max_size
+        value: 200M
+
     - name: Start the MySQL service
       become: true
       service:
@@ -238,12 +273,34 @@
 
     - name: "Run the migrations"
       become: true
-      shell: "php {{ installationpath }}/artisan migrate:fresh"
+      shell: "php {{ installationpath }}/artisan migrate:fresh --force"
 #    - name: Set authorized keys taken from url
 #      authorized_key:
 #          user: root
 #          state: present
 #          key: https://raw.githubusercontent.com/kenmush/untapped/master/ken.keys
+
+
+    - name: configure supervisor
+      become: true
+      command: supervisorctl {{item}}
+      with_items:
+        - reread
+        - update
+        - start scheduler:*
+        - start jobs-worker:*
+
+    - name: restart nginx
+      become: true
+      service:
+        name: nginx
+        state: restarted
+
+    - name: restart php-fpm
+      become: true
+      service:
+        name: php7.4-fpm
+        state: restarted
 
   handlers:
     - name: restart php-fpm
