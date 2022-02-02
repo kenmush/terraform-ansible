@@ -6,14 +6,14 @@
   vars:
     ansible_host_key_checking: false
 #    github_repo_url: "https://e177731cb4f143ccb177d106d6b2c1abb7605d65:x-oauth-basic@github.com/kenmush/investordashboard.git"
-    github_repo_url: "https://e177731cb4f143ccb177d106d6b2c1abb7605d65:x-oauth-basic@github.com/99robots/junglemetrics-laravel-app.git"
-    installationpath: "/var/www/html/junglemetrics"
+    github_repo_url: "https://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@github.com/kenmush/kra.git"
+    installationpath: "/var/www/html/kra"
     queuedriver: "redis"
     user: "ubuntu"
     #######################
     # Enviroment File
     #######################
-    app_name: "Jungle Metrics"
+    app_name: "KRA"
     database_host: 127.0.0.1 # 127.0.0.1
     database: "laravel" # laravel
     database_username: "root" # root
@@ -24,52 +24,52 @@
     # Enviroment File
     #######################
     mysql_root_password: "Kenmushh#45"
-    inifile: "/etc/php/7.4/fpm/php.ini"
+    inifile: "/etc/php/8.0/fpm/php.ini"
 
 #    github_repo_url: "https://gitlab-ci-token:pz_Y-ofJgzm7VCDDg8BB@gitlab.com/vinarqdev/blurb-front-end"
 
   tasks:
-    - name: update APT package manager repository
-      become: true
-      apt:
-        update_cache: yes
-
-    - name: Upgrade existing packages
-      become: true
-      apt:
-        upgrade: yes
-
-    - name: Install GIT VCS
-      become: true
-      apt:
-        name:
-          - git
-          - composer
-        state: latest
-
-    - name: Install ppa PHP repository
-      become: true
-      apt_repository:
-        repo: ppa:ondrej/php
-
-    - name: Install PHP CLI
-      become: true
-      apt:
-        name:
-          - php7.4
-          - php7.4-cli
-          - php7.4-curl
-          - php7.4-fpm
-          - php7.4-intl
-          - php7.4-mysql
-          - php7.4-bz2
-          - php7.4-mbstring
-          - php7.4-xml
-          - php7.4-bcmath
-          - php7.4-gd
-          - php7.4-zip
-          - php7.4-redis
-        state: latest
+#    - name: update APT package manager repository
+#      become: true
+#      apt:
+#        update_cache: yes
+#
+#    - name: Upgrade existing packages
+#      become: true
+#      apt:
+#        upgrade: yes
+#
+#    - name: Install GIT VCS
+#      become: true
+#      apt:
+#        name:
+#          - git
+#          - composer
+#        state: latest
+#
+#    - name: Install ppa PHP repository
+#      become: true
+#      apt_repository:
+#        repo: ppa:ondrej/php
+#
+#    - name: Install PHP CLI
+#      become: true
+#      apt:
+#        name:
+#          - php7.4
+#          - php7.4-cli
+#          - php7.4-curl
+#          - php7.4-fpm
+#          - php7.4-intl
+#          - php7.4-mysql
+#          - php7.4-bz2
+#          - php7.4-mbstring
+#          - php7.4-xml
+#          - php7.4-bcmath
+#          - php7.4-gd
+#          - php7.4-zip
+#          - php7.4-redis
+#        state: latest
 
 
     - name: Install Supervisord
@@ -79,17 +79,17 @@
             - supervisor
          state: latest
 
-    - name: Install Nginx
-      become: true
-      apt:
-        name: nginx
-        state: latest
-
-    - name: Allow Nginx through Firewall
-      become: true
-      ufw:
-        rule: allow
-        name: "Nginx Full"
+#    - name: Install Nginx
+#      become: true
+#      apt:
+#        name: nginx
+#        state: latest
+#
+#    - name: Allow Nginx through Firewall
+#      become: true
+#      ufw:
+#        rule: allow
+#        name: "Nginx Full"
 
     - name: Configure nginx
       become: true
@@ -181,29 +181,29 @@
           #        dest: ~/.my.cnf
           #        owner: root
           #        mode: 0600
-    - name: Install pip
-      become: yes
-      apt:
-        name: python3-pip
-        update_cache: yes
+#    - name: Install pip
+#      become: yes
+#      apt:
+#        name: python3-pip
+#        update_cache: yes
 
-    - name: Install Setup Tools
-      become: yes
-      apt:
-        name: python-setuptools
-        update_cache: yes
+#    - name: Install Setup Tools
+#      become: yes
+#      apt:
+#        name: python-setuptools
+#        update_cache: yes
 
-    - name: Install Virtual Env
-      become: yes
-      apt:
-        name: virtualenv
-        update_cache: yes
+#    - name: Install Virtual Env
+#      become: yes
+#      apt:
+#        name: virtualenv
+#        update_cache: yes
 
-    - name: Install PyMySQL
-      become: true
-      pip:
-        name: PyMySQL
-        executable: pip3
+#    - name: Install PyMySQL
+#      become: true
+#      pip:
+#        name: PyMySQL
+#        executable: pip3
 
     - name: Configure Queue Workers
       become: true

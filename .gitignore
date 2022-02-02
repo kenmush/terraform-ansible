@@ -2,5 +2,5 @@
 /.terraform
 /ssh
 terraform.tfstate
-*.pem
+#*.pem
 terraform.tfstate.backup
